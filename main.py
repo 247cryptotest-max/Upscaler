@@ -3,6 +3,9 @@ import subprocess
 import uuid
 import shutil
 import stat
+import threading
+import time
+import resource  # for memory limiting
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -47,8 +50,6 @@ if not FFMPEG_PATH:
     else:
         FFMPEG_PATH = "ffmpeg"  # will fail, but let it
 
-import threading
-import time
 def cleanup_old_files():
     while True:
         time.sleep(3600)
@@ -71,6 +72,12 @@ async def check_backend():
 
 @app.post("/upload")
 async def upload_video(file: UploadFile = File(...)):
+    # Optional: limit memory for this process (Linux/macOS only)
+    try:
+        resource.setrlimit(resource.RLIMIT_AS, (400 * 1024 * 1024, 400 * 1024 * 1024))
+    except (AttributeError, resource.error):
+        pass  # ignore on Windows or if not permitted
+
     file.file.seek(0, 2)
     size = file.file.tell()
     file.file.seek(0)
@@ -88,10 +95,12 @@ async def upload_video(file: UploadFile = File(...)):
     with open(input_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
+    # Memory-optimized command: 1080p, single thread, ultrafast preset
     cmd = [
         FFMPEG_PATH, "-i", str(input_path),
-        "-vf", "scale=3840:2160:flags=lanczos,unsharp=5:5:1.0:5:5:0.5",
-        "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+        "-threads", "1",
+        "-vf", "scale=1920:1080:flags=lanczos,unsharp=5:5:1.0:5:5:0.5",
+        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
         "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart",
         "-y", str(output_path)
     ]
