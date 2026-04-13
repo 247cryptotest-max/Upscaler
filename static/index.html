@@ -115,7 +115,6 @@
         }
 
         async function uploadFile(file) {
-            // Hide any previous download button, show spinner
             downloadContainer.classList.add('hidden');
             currentDownloadId = null;
             processingSpinner.classList.remove('hidden');
@@ -126,7 +125,11 @@
             try {
                 const response = await fetch('/upload', { method: 'POST', body: formData });
                 const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'Upload failed');
+                if (!response.ok) {
+                    // Show the detailed error message from the backend (e.g., FFmpeg error)
+                    const errorMsg = data.detail || data.error || 'Upload failed';
+                    throw new Error(errorMsg);
+                }
                 if (data.success && data.download_id) {
                     currentDownloadId = data.download_id;
                     downloadBtn.href = `/download/${currentDownloadId}`;
@@ -141,7 +144,6 @@
             }
         }
 
-        // Backend check with loading spinner
         async function checkBackend() {
             backendStatusDiv.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-gray-500 border-t-blue-500 rounded-full animate-spin mr-1"></span> Checking...';
             try {
@@ -160,7 +162,6 @@
         }
 
         checkBackendBtn.addEventListener('click', checkBackend);
-        // Optional: auto-check on page load
         checkBackend();
     </script>
 </body>
