@@ -1,17 +1,13 @@
 services:
   - type: web
-    name: 4k-video-upscaler
+    name: video-upscaler
     runtime: python
     buildCommand: |
-      mkdir -p bin
-      curl -L https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz | tar xJ -C bin --strip-components=1
+      apt-get update && apt-get install -y ffmpeg
       pip install -r requirements.txt
-    startCommand: |
-      export PATH="/opt/render/project/src/bin:$PATH"
-      gunicorn main:app --timeout 600 --workers 1 --threads 2
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
-    plan: free
-    healthCheckPath: /check
-    autoDeploy: true
+    plan: starter  # or free if small, but free tier sleeps
+    
