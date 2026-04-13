@@ -3,9 +3,15 @@ services:
     name: 4k-video-upscaler
     runtime: python
     buildCommand: |
-      apt-get update && apt-get install -y ffmpeg
+      # Download and extract static FFmpeg
+      mkdir -p bin
+      curl -L https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz | tar xJ -C bin --strip-components=1
+      # Install Python dependencies
       pip install -r requirements.txt
-    startCommand: gunicorn main:app --timeout 600 --workers 1 --threads 2
+    startCommand: |
+      # Add the bin folder to PATH so 'ffmpeg' is found
+      export PATH="/opt/render/project/src/bin:$PATH"
+      gunicorn main:app --timeout 600 --workers 1 --threads 2
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
