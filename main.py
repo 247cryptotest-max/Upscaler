@@ -10,7 +10,7 @@ import time
 import requests
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max upload (reduced from 200MB for free tier)
+app.config['MAX_CONTENT_LENGTH'] = 25 * 1024 * 1024  # 25MB max upload
 app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
 
 ALLOWED_EXTENSIONS = {'mp4', 'mov', 'avi', 'mkv', 'webm'}
