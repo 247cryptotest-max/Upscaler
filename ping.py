@@ -9,7 +9,7 @@ import time
 import sys
 
 # ⚠️ CHANGE THIS TO YOUR ACTUAL RENDER URL ⚠️
-RENDER_URL = "https://your-app-name.onrender.com/check"
+RENDER_URL = "https://upscaler-tg2b.onrender.com"
 
 def ping_service():
     try:
