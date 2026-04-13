@@ -67,7 +67,7 @@
                     </svg>
                     <p class="text-gray-400 mb-2">Drag & Drop your video here</p>
                     <p class="text-gray-500 text-sm">or click to browse</p>
-                    <p class="text-gray-600 text-xs mt-4">Supports: MP4, MOV, AVI, MKV, WEBM (Max 200MB)</p>
+                    <p class="text-gray-600 text-xs mt-4">Supports: MP4, MOV, AVI, MKV, WEBM (Max 50MB)</p>
                 </div>
 
                 <!-- File Info -->
@@ -165,8 +165,9 @@
                 alert('Please select a valid video file (MP4, MOV, AVI, MKV, WEBM)');
                 return;
             }
-            if (file.size > 200 * 1024 * 1024) {
-                alert('File too large! Maximum 200MB');
+            // Updated max size to 50MB
+            if (file.size > 50 * 1024 * 1024) {
+                alert('File too large! Maximum 50MB');
                 return;
             }
             selectedFile = file;
@@ -184,7 +185,7 @@
             fileInput.value = '';
         });
 
-        // Upscale function
+        // Upscale function with improved error handling
         upscaleBtn.addEventListener('click', async () => {
             if (!selectedFile) return;
 
@@ -201,8 +202,16 @@
                 });
 
                 if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Upload failed');
+                    let errorMsg = `Server error (${response.status})`;
+                    try {
+                        const errorData = await response.json();
+                        errorMsg = errorData.error || errorMsg;
+                    } catch (e) {
+                        // If response is not valid JSON (e.g., HTML 404 page)
+                        const text = await response.text();
+                        errorMsg = `Server error: ${text.substring(0, 100)}`;
+                    }
+                    throw new Error(errorMsg);
                 }
 
                 const blob = await response.blob();
@@ -259,4 +268,5 @@
         });
     </script>
 </body>
-</html>
+    </html>
+    
