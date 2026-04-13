@@ -5,7 +5,7 @@ import shutil
 import stat
 import threading
 import time
-import resource  # for memory limiting
+# import resource  # <-- removed memory limit (not needed, caused 500 errors)
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -72,11 +72,9 @@ async def check_backend():
 
 @app.post("/upload")
 async def upload_video(file: UploadFile = File(...)):
-    # Optional: limit memory for this process (Linux/macOS only)
-    try:
-        resource.setrlimit(resource.RLIMIT_AS, (400 * 1024 * 1024, 400 * 1024 * 1024))
-    except (AttributeError, resource.error):
-        pass  # ignore on Windows or if not permitted
+    # Memory limit removed – free Render instances have only 512MB,
+    # and the limit was causing FFmpeg to be killed.
+    # The original resource.setrlimit block is deleted.
 
     file.file.seek(0, 2)
     size = file.file.tell()
@@ -95,21 +93,22 @@ async def upload_video(file: UploadFile = File(...)):
     with open(input_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # Memory-optimized command: 1080p, single thread, ultrafast preset
+    # Memory-optimized command + max_muxing_queue_size to avoid errors
     cmd = [
         FFMPEG_PATH, "-i", str(input_path),
         "-threads", "1",
         "-vf", "scale=1920:1080:flags=lanczos,unsharp=5:5:1.0:5:5:0.5",
         "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
         "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart",
-        "-y", str(output_path)
+        "-max_muxing_queue_size", "1024", "-y", str(output_path)
     ]
     try:
         subprocess.run(cmd, check=True, capture_output=True, timeout=300)
     except subprocess.CalledProcessError as e:
+        error_msg = e.stderr.decode() if e.stderr else str(e)
         input_path.unlink(missing_ok=True)
         output_path.unlink(missing_ok=True)
-        raise HTTPException(500, f"FFmpeg error: {e.stderr.decode()}")
+        raise HTTPException(500, f"FFmpeg error: {error_msg}")
     except subprocess.TimeoutExpired:
         input_path.unlink(missing_ok=True)
         output_path.unlink(missing_ok=True)
