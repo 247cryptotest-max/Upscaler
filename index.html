@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4K Video Upscaler - SaaS Style</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .drag-active {
+            border-color: #10b981 !important;
+            background-color: rgba(16, 185, 129, 0.1) !important;
+        }
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 3px solid #10b981;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans antialiased">
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="max-w-2xl w-full">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold bg-gradient-to-r from-green-400 to-emerald-600 bg-clip-text text-transparent">
+                    4K Video Upscaler
+                </h1>
+                <p class="text-gray-400 mt-2">AI-Powered Lanczos Scaling • Social Media Ready</p>
+            </div>
+
+            <!-- Backend Status Button -->
+            <div class="flex justify-end mb-4">
+                <button id="checkBackendBtn" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2 rounded-lg transition flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    Check Backend Status
+                </button>
+            </div>
+
+            <!-- Main Card -->
+            <div class="bg-gray-800 rounded-2xl shadow-2xl p-8 border border-gray-700">
+                <!-- Drag & Drop Area -->
+                <div id="dropzone" class="border-2 border-dashed border-gray-600 rounded-xl p-12 text-center cursor-pointer transition-all hover:border-green-500">
+                    <input type="file" id="fileInput" accept="video/*" class="hidden">
+                    <svg class="w-16 h-16 mx-auto text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    <p class="text-gray-400 mb-2">Drag & Drop your video here</p>
+                    <p class="text-gray-500 text-sm">or click to browse</p>
+                    <p class="text-gray-600 text-xs mt-4">Supports: MP4, MOV, AVI, MKV, WEBM (Max 200MB)</p>
+                </div>
+
+                <!-- File Info -->
+                <div id="fileInfo" class="mt-4 hidden">
+                    <div class="bg-gray-700 rounded-lg p-3 flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span id="fileName" class="text-sm font-mono"></span>
+                        </div>
+                        <button id="removeFile" class="text-red-400 hover:text-red-300">Remove</button>
+                    </div>
+                </div>
+
+                <!-- Upscale Button -->
+                <button id="upscaleBtn" disabled class="w-full mt-6 bg-gradient-to-r from-green-600 to-emerald-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg">
+                    🚀 Upscale to 4K
+                </button>
+
+                <!-- Download Button (initially hidden) -->
+                <div id="downloadContainer" class="mt-4 hidden">
+                    <a id="downloadLink" href="#" download class="block w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg text-center transition">
+                        ⬇️ Download 4K Video
+                    </a>
+                </div>
+            </div>
+
+            <!-- Features -->
+            <div class="mt-8 grid grid-cols-3 gap-4 text-center text-sm">
+                <div class="bg-gray-800 p-3 rounded-lg">
+                    <div class="text-green-500 font-bold">3840×2160</div>
+                    <div class="text-gray-500">True 4K Resolution</div>
+                </div>
+                <div class="bg-gray-800 p-3 rounded-lg">
+                    <div class="text-green-500 font-bold">Lanczos</div>
+                    <div class="text-gray-500">High Quality Scaling</div>
+                </div>
+                <div class="bg-gray-800 p-3 rounded-lg">
+                    <div class="text-green-500 font-bold">Unsharp Mask</div>
+                    <div class="text-gray-500">Social Media Ready</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="overlay hidden">
+        <div class="bg-gray-800 rounded-xl p-8 text-center shadow-2xl">
+            <div class="spinner mx-auto"></div>
+            <p class="mt-4 text-gray-300">Processing your video to 4K...</p>
+            <p class="text-gray-500 text-sm mt-2">This may take a few minutes</p>
+        </div>
+    </div>
+
+    <script>
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const removeFileBtn = document.getElementById('removeFile');
+        const upscaleBtn = document.getElementById('upscaleBtn');
+        const downloadContainer = document.getElementById('downloadContainer');
+        const downloadLink = document.getElementById('downloadLink');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const checkBackendBtn = document.getElementById('checkBackendBtn');
+
+        let selectedFile = null;
+
+        // Drag & Drop handlers
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('drag-active');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('drag-active');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('drag-active');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) handleFile(files[0]);
+        });
+
+        dropzone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) handleFile(e.target.files[0]);
+        });
+
+        function handleFile(file) {
+            const validTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/webm'];
+            if (!validTypes.includes(file.type)) {
+                alert('Please select a valid video file (MP4, MOV, AVI, MKV, WEBM)');
+                return;
+            }
+            if (file.size > 200 * 1024 * 1024) {
+                alert('File too large! Maximum 200MB');
+                return;
+            }
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileInfo.classList.remove('hidden');
+            upscaleBtn.disabled = false;
+            downloadContainer.classList.add('hidden');
+        }
+
+        removeFileBtn.addEventListener('click', () => {
+            selectedFile = null;
+            fileInfo.classList.add('hidden');
+            upscaleBtn.disabled = true;
+            downloadContainer.classList.add('hidden');
+            fileInput.value = '';
+        });
+
+        // Upscale function
+        upscaleBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('video', selectedFile);
+
+            loadingOverlay.classList.remove('hidden');
+            upscaleBtn.disabled = true;
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Upload failed');
+                }
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                downloadLink.href = url;
+                downloadContainer.classList.remove('hidden');
+                
+                // Scroll to download button
+                downloadContainer.scrollIntoView({ behavior: 'smooth' });
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                loadingOverlay.classList.add('hidden');
+                upscaleBtn.disabled = false;
+            }
+        });
+
+        // Backend status check with spinner
+        checkBackendBtn.addEventListener('click', async () => {
+            const originalText = checkBackendBtn.innerHTML;
+            checkBackendBtn.innerHTML = '<div class="spinner w-5 h-5 border-2"></div> Checking...';
+            checkBackendBtn.disabled = true;
+
+            try {
+                const response = await fetch('/check');
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'active') {
+                    checkBackendBtn.innerHTML = '✅ Backend Active';
+                    checkBackendBtn.classList.remove('bg-gray-800', 'hover:bg-gray-700');
+                    checkBackendBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                } else {
+                    checkBackendBtn.innerHTML = '❌ Backend Inactive';
+                    checkBackendBtn.classList.remove('bg-gray-800', 'hover:bg-gray-700');
+                    checkBackendBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+                }
+                
+                setTimeout(() => {
+                    checkBackendBtn.innerHTML = originalText;
+                    checkBackendBtn.classList.remove('bg-green-600', 'bg-red-600', 'hover:bg-green-700', 'hover:bg-red-700');
+                    checkBackendBtn.classList.add('bg-gray-800', 'hover:bg-gray-700');
+                    checkBackendBtn.disabled = false;
+                }, 3000);
+            } catch (error) {
+                checkBackendBtn.innerHTML = '❌ Connection Failed';
+                checkBackendBtn.classList.add('bg-red-600');
+                setTimeout(() => {
+                    checkBackendBtn.innerHTML = originalText;
+                    checkBackendBtn.classList.remove('bg-red-600');
+                    checkBackendBtn.classList.add('bg-gray-800', 'hover:bg-gray-700');
+                    checkBackendBtn.disabled = false;
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html>
