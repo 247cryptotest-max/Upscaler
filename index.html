@@ -38,7 +38,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                 </svg>
                 <p class="text-lg font-medium">Drag & drop your video here</p>
-                <p class="text-sm text-gray-500 mt-1">or click to browse (MP4, MOV, AVI, MKV, WEBM)</p>
+                <p class="text-sm text-gray-500 mt-1">or click to browse (MP4, MOV, AVI, MKV, WEBM) – max 50MB</p>
                 <input type="file" id="fileInput" class="hidden" accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,video/webm">
                 <p id="fileName" class="mt-3 text-sm text-blue-400 hidden"></p>
             </div>
@@ -64,7 +64,7 @@
                 <div id="backendStatus" class="mt-3 text-sm font-mono"></div>
             </div>
 
-            <p class="text-xs text-gray-600 text-center mt-8">Max 500MB • Processed with FFmpeg Lanczos 4K + unsharp</p>
+            <p class="text-xs text-gray-600 text-center mt-8">Max 50MB • Processed with FFmpeg Lanczos 4K + unsharp</p>
         </div>
     </div>
 
@@ -105,8 +105,8 @@
                 alert('Unsupported file format. Please upload MP4, MOV, AVI, MKV, or WEBM.');
                 return;
             }
-            if (file.size > 500 * 1024 * 1024) {
-                alert('File too large. Max 500MB allowed.');
+            if (file.size > 50 * 1024 * 1024) {
+                alert('File too large. Max 50MB allowed.');
                 return;
             }
             fileNameSpan.textContent = file.name;
