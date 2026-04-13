@@ -3,27 +3,43 @@ import subprocess
 import uuid
 import shutil
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
 app = FastAPI()
 
-# Allow frontend (same origin or separate) – adjust if needed
+# Allow CORS (only needed if frontend is on different port/origin)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For production, restrict to your domain
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Create directories
 UPLOAD_DIR = Path("uploads")
 OUTPUT_DIR = Path("outputs")
+STATIC_DIR = Path("static")
 UPLOAD_DIR.mkdir(exist_ok=True)
 OUTPUT_DIR.mkdir(exist_ok=True)
+STATIC_DIR.mkdir(exist_ok=True)
 
-# Cleanup old files after 1 hour (simple)
+# Serve static files (CSS, JS, images, and index.html)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Root route serves index.html
+@app.get("/", response_class=HTMLResponse)
+async def serve_frontend():
+    index_path = STATIC_DIR / "index.html"
+    if not index_path.exists():
+        return HTMLResponse("<h1>index.html not found in static/ folder</h1>", status_code=404)
+    with open(index_path, "r", encoding="utf-8") as f:
+        return f.read()
+
+# Cleanup old files every hour
 import threading
 import time
 def cleanup_old_files():
@@ -78,7 +94,6 @@ async def upload_video(file: UploadFile = File(...)):
     try:
         subprocess.run(cmd, check=True, capture_output=True, timeout=300)
     except subprocess.CalledProcessError as e:
-        # Clean up and report error
         input_path.unlink(missing_ok=True)
         output_path.unlink(missing_ok=True)
         raise HTTPException(500, f"FFmpeg error: {e.stderr.decode()}")
@@ -94,7 +109,6 @@ async def upload_video(file: UploadFile = File(...)):
 
 @app.get("/download/{download_id}")
 async def download_video(download_id: str):
-    # Find the output file (we know it ends with _4k.mp4)
     output_file = OUTPUT_DIR / f"{download_id}_4k.mp4"
     if not output_file.exists():
         raise HTTPException(404, "File not found or expired")
