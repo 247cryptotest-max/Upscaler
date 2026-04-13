@@ -60,9 +60,12 @@ def is_ffmpeg_available():
     except (subprocess.SubprocessError, FileNotFoundError):
         return False
 
+# Replace the @app.route('/') function with this:
+
 @app.route('/')
 def index():
-    return render_template('index.html')
+    with open('index.html', 'r') as f:
+        return f.read()
 
 @app.route('/check', methods=['GET'])
 def check_backend():
