@@ -5,7 +5,6 @@ import shutil
 import stat
 import threading
 import time
-# import resource  # <-- removed memory limit (not needed, caused 500 errors)
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -39,7 +38,6 @@ async def serve_frontend():
     with open(index_path, "r", encoding="utf-8") as f:
         return f.read()
 
-# Find ffmpeg binary
 FFMPEG_PATH = shutil.which("ffmpeg")
 if not FFMPEG_PATH:
     local_ffmpeg = Path("ffmpeg")
@@ -48,7 +46,7 @@ if not FFMPEG_PATH:
         st = os.stat(FFMPEG_PATH)
         os.chmod(FFMPEG_PATH, st.st_mode | stat.S_IEXEC)
     else:
-        FFMPEG_PATH = "ffmpeg"  # will fail, but let it
+        FFMPEG_PATH = "ffmpeg"
 
 def cleanup_old_files():
     while True:
@@ -72,10 +70,6 @@ async def check_backend():
 
 @app.post("/upload")
 async def upload_video(file: UploadFile = File(...)):
-    # Memory limit removed – free Render instances have only 512MB,
-    # and the limit was causing FFmpeg to be killed.
-    # The original resource.setrlimit block is deleted.
-
     file.file.seek(0, 2)
     size = file.file.tell()
     file.file.seek(0)
@@ -93,15 +87,26 @@ async def upload_video(file: UploadFile = File(...)):
     with open(input_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # Memory-optimized command + max_muxing_queue_size to avoid errors
+    # ----- FIX: 9:16 portrait output with letterboxing -----
+    # Change to "2160:3840" for true 4K portrait (may cause OOM on free tier)
+    target_w, target_h = 1080, 1920
+    
+    scale_filter = (
+        f"scale={target_w}:{target_h}:force_original_aspect_ratio=1,"
+        f"pad={target_w}:{target_h}:(ow-iw)/2:(oh-ih)/2,"
+        "unsharp=5:5:1.0:5:5:0.5"
+    )
+    
     cmd = [
         FFMPEG_PATH, "-i", str(input_path),
         "-threads", "1",
-        "-vf", "scale=1920:1080:flags=lanczos,unsharp=5:5:1.0:5:5:0.5",
+        "-vf", scale_filter,
         "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
         "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart",
         "-max_muxing_queue_size", "1024", "-y", str(output_path)
     ]
+    # ------------------------------------------------
+
     try:
         subprocess.run(cmd, check=True, capture_output=True, timeout=300)
     except subprocess.CalledProcessError as e:
@@ -122,7 +127,7 @@ async def download_video(download_id: str):
     output_file = OUTPUT_DIR / f"{download_id}_4k.mp4"
     if not output_file.exists():
         raise HTTPException(404, "File not found or expired")
-    return FileResponse(output_file, filename="upscaled_4k.mp4", media_type="video/mp4")
+    return FileResponse(output_file, filename="upscaled_9x16_portrait.mp4", media_type="video/mp4")
 
 if __name__ == "__main__":
     import uvicorn
