@@ -108,7 +108,7 @@ async def upload_video(file: UploadFile = File(...)):
     # ------------------------------------------------
 
     try:
-        subprocess.run(cmd, check=True, capture_output=True, timeout=600)
+        subprocess.run(cmd, check=True, capture_output=True, timeout=600)  # increased to 10 minutes
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.decode() if e.stderr else str(e)
         input_path.unlink(missing_ok=True)
@@ -117,7 +117,7 @@ async def upload_video(file: UploadFile = File(...)):
     except subprocess.TimeoutExpired:
         input_path.unlink(missing_ok=True)
         output_path.unlink(missing_ok=True)
-        raise HTTPException(500, "Processing timed out (5 min limit)")
+        raise HTTPException(500, "Processing timed out (10 min limit)")
 
     input_path.unlink()
     return {"success": True, "download_id": input_id}
