@@ -108,7 +108,7 @@ async def upload_video(file: UploadFile = File(...)):
     # ------------------------------------------------
 
     try:
-        subprocess.run(cmd, check=True, capture_output=True, timeout=300)
+        subprocess.run(cmd, check=True, capture_output=True, timeout=600)
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.decode() if e.stderr else str(e)
         input_path.unlink(missing_ok=True)
